@@ -1,0 +1,126 @@
+/* MovieCarousel.css */
+
+/* --- 1. Styling untuk Setiap Item Carousel --- */
+.custom-carousel-item {
+    height: 650px; /* Tinggi tetap untuk setiap slide */
+    background-size: cover;
+    background-position: center; /* Fokuskan gambar di tengah */
+    background-repeat: no-repeat;
+    position: relative;
+    color: white; /* Default teks menjadi putih */
+}
+
+
+/* --- 2. Overlay Gradien Gelap --- */
+/* Overlay ini menutupi seluruh item, lebih gelap di kiri untuk teks */
+.gradient-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Di bawah konten utama */
+    
+    background: linear-gradient(
+        to right, 
+        rgba(0, 0, 0, 1) 0%,   /* Hitam penuh di kiri (untuk teks) */
+        rgba(0, 0, 0, 0.8) 40%, /* Sedikit transparan */
+        rgba(0, 0, 0, 0.4) 60%, /* Lebih transparan */
+        rgba(0, 0, 0, 0) 100%  /* Sepenuhnya transparan di kanan (gambar terlihat) */
+    );
+}
+
+/* --- 3. Konten Teks (Caption) --- */
+.carousel-caption-content {
+    position: relative; /* Penting untuk z-index di atas overlay */
+    z-index: 2; /* Memastikan teks dan tombol berada di atas overlay */
+    text-align: left; /* Rata kiri */
+    padding-right: 2rem; /* Ruang dari tepi kanan kolom teks */
+}
+
+.movie-logo {
+    max-width: 250px; /* Ukuran logo film */
+    height: auto;
+    filter: drop-shadow(0 0 5px rgba(0,0,0,0.7)); /* Sedikit shadow agar menonjol */
+}
+
+.movie-title {
+    font-size: 3.5rem; /* Ukuran judul */
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+.movie-subtitle {
+    font-size: 1.2rem;
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 1rem;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+.movie-description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 500px; /* Batasi lebar deskripsi */
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+.btn-info-transparent {
+    /* Latar belakang hitam 50% transparan */
+    background-color: rgba(0, 0, 0, 0.5) !important; 
+    font-weight: bold;
+    color: white !important;
+    /* Border putih sedikit transparan, menimpa border bawaan outline-light */
+    border-color: rgba(255, 255, 255, 0.7) !important; 
+}
+
+/* Efek Hover untuk Tombol More Info */
+.btn-info-transparent:hover {
+    /* Latar belakang menjadi lebih transparan saat di-hover */
+    background-color: rgba(255, 255, 255, 0.414) !important;
+    color: white !important; 
+    border-color: white !important;
+}
+
+.btn-details {
+    font-weight: bold;
+    color: white !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    background-color: transparent !important;
+}
+
+.btn-details:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: white !important;
+}
+
+/* --- 5. Responsif (Opsional, tapi disarankan) --- */
+@media (max-width: 768px) {
+    .custom-carousel-item {
+        height: 550px; /* Sesuaikan tinggi untuk mobile */
+    }
+
+    .movie-title {
+        font-size: 2.5rem;
+    }
+
+    .movie-description {
+        font-size: 1rem;
+    }
+
+    .carousel-caption-content {
+        padding-right: 1rem;
+    }
+    
+    .gradient-overlay {
+        /* Untuk mobile, gradien mungkin lebih merata */
+        background: linear-gradient(
+            to top, 
+            rgba(0, 0, 0, 1) 0%, 
+            rgba(0, 0, 0, 0.7) 40%, 
+            rgba(0, 0, 0, 0) 100%
+        );
+    }
+}

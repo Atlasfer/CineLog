@@ -1,0 +1,44 @@
+/* UserMenu.css */
+
+/* Styling untuk Gambar Profil */
+.profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%; 
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid transparent; 
+    transition: border-color 0.3s; 
+}
+
+.profile-pic:hover {
+    border-color: #007bff;
+    
+}
+
+#dropdown-profile {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+#dropdown-profile::after {
+    display: none !important;
+}
+
+/* Tombol Putih Transparan */
+.btn-primary {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: white !important; 
+}
+
+.btn-primary:hover {
+    background-color: rgba(255, 255, 255, 0.4) !important; 
+}
+
+.loginwidth {
+    width: 100px; 
+    display: flex;
+    justify-content: flex-end;
+}

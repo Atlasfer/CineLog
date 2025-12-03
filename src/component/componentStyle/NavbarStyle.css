@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Lobster&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Pacifico&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Story+Script&display=swap');
+.Linknav{
+    transition: 0.3s ease-in-out;
+    font-size: 20px;
+    margin-right: 10px;
+}
+.NavBrand{
+    font-family: 'Poppins', cursive;
+}
+img{
+    width: 35px;
+    height: 35px;
+    margin-right: 10px;
+}
+
+.bg-body-tertiary {
+    background: none !important; 
+    background: linear-gradient(to right, #0d1e36, #060b15) !important;
+    color: white !important; 
+}
+
+.NavBrand, .Linknav, .navbar-toggler-icon {
+    color: white !important;
+}
+
+.Linknav.active {
+    color: #00bcd4 !important; 
+    border-bottom: 2px solid #00bcd4;
+    padding-bottom: 3px; 
+}
+
+.Linknav:hover {
+    color: #00bcd4 !important; 
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}

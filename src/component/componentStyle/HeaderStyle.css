@@ -1,0 +1,72 @@
+/* HeroStyle.css */
+
+/* --- 1. Container Utama --- */
+.hero-section {
+    position: relative;
+    /* Tinggi yang disesuaikan */
+    height: 650px; 
+    /* Properti untuk gambar latar belakang */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* Memastikan konten di dalam section terpusat */
+    display: flex;
+    align-items: center;
+}
+
+/* Mengatur tinggi container Bootstrap agar bisa menampung konten di tengah */
+.hero-section .container {
+    z-index: 2; /* Pastikan konten di atas overlay */
+}
+
+/* --- 2. Overlay Gradien --- */
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Di bawah konten utama */
+    
+    /* Gradien Gelap: Dari Kiri (Paling Gelap) ke Kanan (Transparan/Agak Gelap) */
+    background: linear-gradient(
+        to right, 
+        rgba(0, 0, 0, 1) 0%, /* Hitam Penuh di 0% */
+        rgba(0, 0, 0, 0.7) 50%, /* 70% Hitam di Tengah */
+        rgba(0, 0, 0, 0.5) 100% /* Transparan di Kanan */
+    );
+}
+
+/* --- 3. Tipografi & Warna --- */
+.hero-title {
+    color: white;
+    font-size: 3.5rem; /* Ukuran font besar */
+    font-weight: 800; /* Ekstra tebal */
+    line-height: 1.2;
+}
+
+.hero-description {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.25rem; /* Ukuran font sedang */
+    font-weight: 300; /* Font tipis */
+}
+
+/* Warna aksen kustom (jika tidak didefinisikan oleh Bootstrap) */
+.text-cyan {
+    color: #00bcd4; /* Aksen Cyan Cerah */
+}
+
+/* --- 4. Styling Tombol Gradien --- */
+.btn-watchlist {
+    border: none !important;
+    color: white !important;
+    background: linear-gradient(to right, #00bcd4, #2196F3) !important;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 188, 212, 0.4);
+}
+
+.btn-watchlist:hover {
+    background: linear-gradient(to right, #2196F3, #00bcd4) !important;
+    box-shadow: 0 6px 20px rgba(0, 188, 212, 0.6);
+}
+
