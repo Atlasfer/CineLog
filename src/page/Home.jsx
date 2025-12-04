@@ -4,6 +4,7 @@ import { Heart, Plus, Search } from 'lucide-react';
 import { Container, Row, Col, Card, Form, Button, Nav, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import api from '../lib/api';
 
 import Header from '../component/Header';
 import Carousels from '../component/Carousels';
@@ -52,8 +53,8 @@ export default function HomePage() {
 
   const fetchTrendingMovies = async () => {
     try {
-      const res = await axios.get(`${TMDB_API}/trending/movie/week`, {
-        params: { api_key: TMDB_KEY }
+      const res = await api.get('/movies/trending', {
+        params: { timeWindow: 'week' }
       });
       setTrending(res.data.results.slice(0, 10));
     } catch (err) {
@@ -63,11 +64,9 @@ export default function HomePage() {
 
   const fetchDiscoverMovies = async () => {
     try {
-      const res = await axios.get(`${TMDB_API}/discover/movie`, {
+      const res = await api.get('/movies/discover', {
         params: {
-          api_key: TMDB_KEY,
           sort_by: 'popularity.desc',
-          include_adult: false,
           page: 1
         }
       });
@@ -130,7 +129,7 @@ export default function HomePage() {
           className="mb-4 bg-secondary text-white border-0"
         />
 
-        {/* Genre Filter (simplified) */}
+        {/* Genre Filter */}
         <div className="mb-4 overflow-x-auto">
           <Nav variant="pills" className="flex-nowrap">
             {['All', '28', '12', '16', '35', '27'].map(id => {

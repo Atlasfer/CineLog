@@ -69,43 +69,24 @@ function Header({ onNavigateToWatchlist }) {
               <div className="d-flex gap-3 justify-content-center flex-wrap">
 
                 {/* Tombol Utama: Watchlist */}
-
                 <Button
-
                   variant="primary" // Menggunakan varian Bootstrap
-
                   size="lg"
-
                   onClick={onNavigateToWatchlist}
-
                   className="btn-watchlist" // Kelas kustom untuk gradien
-
                 >
-
                   <List className="me-2" />
-
                   Lihat Watchlist Saya
-
                 </Button>
-
                
-
                 {/* Tombol Sekunder: Jelajahi */}
-
                 <Button
-
                   variant="outline-light" // Varian outline light Bootstrap
-
                   size="lg"
-
                   onClick={handleScrollToTrending}
-
                 >
-
                   Jelajahi Film Trending
-
                   <ArrowRight className="ms-2" />
-
                 </Button>
 
               </div>

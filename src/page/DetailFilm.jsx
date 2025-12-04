@@ -6,7 +6,7 @@ import {Container, Row, Col, Button, Modal, Form, Badge, Card,Spinner, Alert} fr
 import AddToListModal from './AddList.jsx';
 
 function DetailFilm() {
-  const { movieId } = useParams(); // dari route /movie/:movieId
+  const { movieId } = useParams(); 
   const navigate = useNavigate();
 
   const [movie, setMovie] = useState(null);
@@ -33,7 +33,6 @@ function DetailFilm() {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Fetch semua data saat komponen mount
   useEffect(() => {
     fetchMovieDetail();
   }, [movieId]);
@@ -46,7 +45,7 @@ function DetailFilm() {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Ambil detail film + data user dalam satu request (recommended)
+      // Ambil detail film + data user dalam satu request
       const res = await axios.get(`${API_URL}/movies/${movieId}`, { headers });
 
       setMovie(res.data.movie);
@@ -105,7 +104,7 @@ function DetailFilm() {
         });
       }
       setShowRatingModal(false);
-      fetchMovieDetail(); // refresh
+      fetchMovieDetail();
     } catch (err) {
       alert('Gagal menyimpan rating');
     }
