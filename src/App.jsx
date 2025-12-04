@@ -3,12 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import { Navbar, Nav, Container, Button, Image, Alert } from 'react-bootstrap';
 import { Home, List, Heart, User, LogOut } from 'lucide-react';
 import NavbarComponent from './component/Navbar';
-import api from './lib/api'; // axios instance dengan withCredentials: true
+import api from './lib/api';
 
 // Pages
 import HomePage from './page/Home';
 import Profile from './page/Profile';
-import MyWatchList from './page/MyWatchList';     // ganti jadi My Lists
+import MyWatchList from './page/MyWatchList'; 
 import MyFavorit from './page/favorit';
 import DetailFilm from './page/DetailFilm';
 import AuthPage from './page/Auth';
@@ -29,7 +29,6 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/auth" replace state={{ from: window.location.pathname }} />;
 }
 
-// Main Layout dengan Navbar
 function Layout({ user, setUser, appData, setAppData }) {
   const navigate = useNavigate();
 

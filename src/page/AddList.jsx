@@ -142,8 +142,6 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
                 variant="danger"
                 onClick={() => {
                   onClose();
-                  // Bisa buka modal create list di sini
-                  // Misal: setShowCreateListModal(true)
                 }}
               >
                 Buat List Baru
@@ -163,8 +161,6 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
             size="sm"
             onClick={() => {
               onClose();
-              // Bisa redirect ke halaman create list
-              // navigate('/lists/create')
             }}
           >
             Buat List Pertama

@@ -15,7 +15,6 @@ function MyFavorit() {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Fetch daftar favorit dari backend
   const fetchFavorites = async () => {
     try {
       setLoading(true);
@@ -27,7 +26,6 @@ function MyFavorit() {
         },
       });
 
-      // Asumsi backend mengembalikan array film lengkap (bukan hanya ID)
       setFavorites(res.data.favorites || res.data);
     } catch (err) {
       if (err.response?.status === 401) {
@@ -56,14 +54,12 @@ function MyFavorit() {
         },
       });
 
-      // Update UI langsung tanpa refetch (optimistic update)
       setFavorites(prev => prev.filter(movie => movie.id !== movieId));
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus dari favorit');
     }
   };
 
-  // Jalankan saat komponen mount
   useEffect(() => {
     fetchFavorites();
   }, []);
@@ -129,7 +125,7 @@ function MyFavorit() {
           <Row xs={2} sm={3} md={4} lg={5} xl={6} className="g-4">
             {favorites.map((movie) => {
               // Cari rating user untuk film ini (jika ada)
-              const userRating = movie.userRating || movie.rating; // tergantung struktur data dari backend
+              const userRating = movie.userRating || movie.rating;
 
               return (
                 <Col key={movie.id}>

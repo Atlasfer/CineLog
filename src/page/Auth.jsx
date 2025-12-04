@@ -6,7 +6,7 @@ import './AuthStyle.css'
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,6 @@ function AuthPage() {
 
   const navigate = useNavigate();
 
-  // Ganti dengan base URL backend kamu
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   const handleSubmit = async (e) => {
@@ -26,7 +25,7 @@ function AuthPage() {
       if (isLogin) {
         // LOGIN
         const res = await axios.post(`${API_URL}/auth/login`, {
-          email,
+          username,
           password,
         });
 
@@ -44,25 +43,23 @@ function AuthPage() {
         // REGISTER
         const res = await axios.post(`${API_URL}/auth/register`, {
           name,
-          email,
+          username,
           password,
         });
 
-        // Opsional: langsung login setelah register, atau minta login manual
         alert('Registrasi berhasil! Silakan login.');
         setIsLogin(true);
         setName('');
-        setEmail('');
+        setUsername('');
         setPassword('');
       }
     } catch (err) {
-      // Tangani error dari backend
       const message = err.response?.data?.message || err.message || 'Terjadi kesalahan';
       setError(message);
 
-      // Jika register gagal karena email sudah ada, dll
+      // Jika register gagal karena username sudah ada, dll
       if (err.response?.status === 400 || err.response?.status === 401) {
-        setError(err.response.data.message || 'Email atau password salah');
+        setError(err.response.data.message || 'Username atau password salah');
       }
     } finally {
       setLoading(false);
@@ -120,7 +117,7 @@ function AuthPage() {
             {/* Form */}
             <Form onSubmit={handleSubmit}>
               
-              {/* Name - hanya muncul saat Register */}
+              {/* Name hanya muncul saat Register */}
               {!isLogin && (
                 <Form.Group className="mb-3" controlId="formName">
                   <Form.Label className="text-light">Nama</Form.Label>
@@ -136,16 +133,16 @@ function AuthPage() {
                 </Form.Group>
               )}
 
-              <Form.Group className="mb-3" controlId="formEmail">
-                <Form.Label className="text-light">Email</Form.Label>
+              <Form.Group className="mb-3" controlId="formUsername">
+                <Form.Label className="text-light">Username</Form.Label>
                 <Form.Control
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={loading}
                   className="bg-dark text-white border-secondary"
-                  placeholder="contoh@mail.com"
+                  placeholder="bapake"
                 />
               </Form.Group>
 

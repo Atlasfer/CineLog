@@ -32,7 +32,7 @@ function Carousels({ movies = [] }) {
             }}
           />
 
-          <Carousel.Caption className="h-100 d-flex align-items-center">
+          <Carousel.Caption className="h-100 d-flex">
             <Container>
               <Row>
                 <Col lg={6}>
@@ -47,19 +47,11 @@ function Carousels({ movies = [] }) {
                   </p>
 
                   <div className="d-flex flex-wrap gap-3">
-                    {/* <Button 
-                      variant="danger" 
-                      size="lg"
-                      onClick={() => navigate(`/movie/${movie.id}`)}
-                      className="d-flex align-items-center gap-2"
-                    >
-                      <Play size={20} fill="white" />
-                      Detail Film
-                    </Button> */}
                     <Button 
                       variant="outline-light" 
                       size="lg"
                       onClick={() => navigate(`/movie/${movie.id}`)}
+                      className="d-flex align-items-center gap-2"
                     >
                       <Info size={20} />
                       More Info
