@@ -10,9 +10,7 @@ function Header({ onNavigateToWatchlist }) {
   };
 
   return (
-
     <section className="hero-section" style={{ backgroundImage: `url(${heroImageUrl})` }}>
-
         <div className="hero-overlay" />
         <Container className="h-100 position-relative">
           <Row className="h-100 align-items-center justify-content-center text-center">
