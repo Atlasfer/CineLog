@@ -47,7 +47,7 @@ function Carousels({ movies = [] }) {
                   </p>
 
                   <div className="d-flex flex-wrap gap-3">
-                    <Button 
+                    {/* <Button 
                       variant="danger" 
                       size="lg"
                       onClick={() => navigate(`/movie/${movie.id}`)}
@@ -55,7 +55,7 @@ function Carousels({ movies = [] }) {
                     >
                       <Play size={20} fill="white" />
                       Detail Film
-                    </Button>
+                    </Button> */}
                     <Button 
                       variant="outline-light" 
                       size="lg"

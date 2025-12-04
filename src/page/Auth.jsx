@@ -98,7 +98,7 @@ function AuthPage() {
               <Nav.Item className="flex-grow-1">
                 <Button
                   onClick={() => { setIsLogin(true); setError(''); }}
-                  variant={isLogin ? 'primary' : 'outline-secondary'}
+                  variant={isLogin ? 'info' : 'outline-secondary'}
                   className="w-100"
                   disabled={loading}
                 >
@@ -163,7 +163,7 @@ function AuthPage() {
               </Form.Group>
 
               <Button
-                variant={isLogin ? "primary" : "danger"}
+                variant={isLogin ? "info" : "danger"}
                 type="submit"
                 className="w-100 py-2"
                 disabled={loading}

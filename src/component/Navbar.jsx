@@ -16,8 +16,7 @@ function NavbarComponent({ user, setUser, setAppData, handleLogout }) {
     const navigate = useNavigate();
 
     return (
-        <>
-            {/* NAVBAR UTAMA (Desktop) */}
+        <div>
             <Navbar expand="lg" sticky="top" className="bg-body-tertiary py-3">
                 <Container>
                     <img src='IconWhite.png'></img>
@@ -28,7 +27,7 @@ function NavbarComponent({ user, setUser, setAppData, handleLogout }) {
                     <Navbar.Collapse id="basic-navbar-nav">
                       <Nav className="mx-auto">
                           <Nav.Link onClick={() => navigate('/')} className="Linknav">
-                              <Home size={20} className="me-1" /> Home
+                              Home
                           </Nav.Link>
                           <Nav.Link onClick={() => navigate('/watchlist')} className="Linknav">
                               Watchlist
@@ -74,7 +73,7 @@ function NavbarComponent({ user, setUser, setAppData, handleLogout }) {
                     </Nav>
                 </Navbar>
             )}
-        </>
+        </div>
     );
 }
 export default NavbarComponent;

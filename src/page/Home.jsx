@@ -133,20 +133,29 @@ export default function HomePage() {
         {/* Genre Filter (simplified) */}
         <div className="mb-4 overflow-x-auto">
           <Nav variant="pills" className="flex-nowrap">
-            {['All', '28', '12', '16', '35', '27'].map(id => (
-              <Nav.Item key={id}>
-                <Nav.Link
-                  active={selectedGenre === id}
-                  onClick={() => setSelectedGenre(id)}
-                  className="text-white"
-                >
-                  {id === 'All' ? 'All' : ['Action', 'Adventure', 'Animation', 'Comedy', 'Horror'][parseInt(id) - 28] || id}
-                </Nav.Link>
-              </Nav.Item>
-            ))}
+            {['All', '28', '12', '16', '35', '27'].map(id => {
+              const genreNames = {
+                'All': 'All',
+                '28': 'Action',
+                '12': 'Adventure',
+                '16': 'Animation',
+                '35': 'Comedy',
+                '27': 'Horror'
+              };
+              return (
+                <Nav.Item key={id}>
+                  <Nav.Link
+                    active={selectedGenre === id}
+                    onClick={() => setSelectedGenre(id)}
+                    className="text-white"
+                  >
+                    {genreNames[id] || id}
+                  </Nav.Link>
+                </Nav.Item>
+              );
+            })}
           </Nav>
         </div>
-
         {/* Movie Grid */}
         {loading ? (
           <div className="text-center py-5">

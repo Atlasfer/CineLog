@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  ArrowLeft, Heart, Plus, Star, MessageSquare,
-  Edit2, Trash2, X
-} from 'lucide-react';
-import {
-  Container, Row, Col, Button, Modal, Form, Badge, Card,
-  Spinner, Alert
-} from 'react-bootstrap';
+import {ArrowLeft, Heart, Plus, Star, MessageSquare,Edit2, Trash2, X} from 'lucide-react';
+import {Container, Row, Col, Button, Modal, Form, Badge, Card,Spinner, Alert} from 'react-bootstrap';
 import AddToListModal from './AddList.jsx';
 
 function DetailFilm() {

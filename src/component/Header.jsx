@@ -4,7 +4,7 @@ import { Container, Button, Row, Col } from 'react-bootstrap';
 
 // Pastikan Anda mengimpor ikon yang diperlukan, misalnya dari library ikon
 
-// import { List, ArrowRight } from 'lucide-react';
+import { List, ArrowRight } from 'lucide-react';
 
 import './componentStyle/HeaderStyle.css'; // File CSS baru untuk Hero Section
 
@@ -38,7 +38,7 @@ function Header({ onNavigateToWatchlist }) {
 
         <Container className="h-100 position-relative">
 
-          <Row className="h-100 align-items-center">
+          <Row className="h-100 align-items-center justify-content-center text-center">
 
             <Col lg={7} md={9}> {/* Mengatur lebar konten di layar besar */}
 
@@ -66,7 +66,7 @@ function Header({ onNavigateToWatchlist }) {
 
               {/* Tombol Aksi */}
 
-              <div className="d-flex gap-3">
+              <div className="d-flex gap-3 justify-content-center flex-wrap">
 
                 {/* Tombol Utama: Watchlist */}
 
@@ -82,7 +82,7 @@ function Header({ onNavigateToWatchlist }) {
 
                 >
 
-                  {/* <List className="me-2" /> */}
+                  <List className="me-2" />
 
                   Lihat Watchlist Saya
 
@@ -104,7 +104,7 @@ function Header({ onNavigateToWatchlist }) {
 
                   Jelajahi Film Trending
 
-                  {/* <ArrowRight className="ms-2" /> */}
+                  <ArrowRight className="ms-2" />
 
                 </Button>
 
