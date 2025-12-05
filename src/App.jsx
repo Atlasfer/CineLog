@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, Container, Button, Image, Alert } from 'react-bootstrap';
-import { Home, List, Heart, User, LogOut } from 'lucide-react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Container} from 'react-bootstrap';
 import NavbarComponent from './component/Navbar';
 import api from './lib/api';
 
@@ -9,33 +8,33 @@ import api from './lib/api';
 import HomePage from './page/Home';
 import Profile from './page/Profile';
 import MyWatchList from './page/MyWatchList'; 
-import MyFavorit from './page/favorit';
 import DetailFilm from './page/DetailFilm';
 import AuthPage from './page/Auth';
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem('token');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/auth/me')
-      .then(res => setUser(res.data.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="min-vh-100 d-flex justify-content-center align-items-center text-white">Loading...</div>;
-  return user ? children : <Navigate to="/auth" replace state={{ from: window.location.pathname }} />;
+    if (!token) {
+      navigate('/auth', { replace: true , state: { from: window.location.pathname }});
+    }
+  }, [token, navigate]);
+  if (!token) {
+    return null;
+  }
+  return children;
 }
 
 function Layout({ user, setUser, appData, setAppData }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await api.post('/auth/logout');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    setAppData({ customLists: [], favorites: [], ratings: [], quotes: [] });
+    setAppData({ customLists: [], ratings: [], quotes: [] });
     navigate('/');
   };
 
@@ -49,30 +48,22 @@ function Layout({ user, setUser, appData, setAppData }) {
         <Container className="pt-4">
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<HomePage appData={{ user, ...appData }} />} />
-            <Route path="/movie/:movieId" element={<DetailFilm appData={{ user, ...appData }} />} />
+            <Route path="/" element={<HomePage user={user} appData={appData} setAppData={setAppData} />} />
+            <Route path="/movie/:movieId" element={<DetailFilm user={user} appData={appData} setAppData={setAppData} />} />
 
             {/* Protected Routes */}
             <Route path="/watchlist" element={
               <ProtectedRoute>
-                <MyWatchList appData={{ user, ...appData }} />
-              </ProtectedRoute>
-            } />
-            <Route path="/favorit" element={
-              <ProtectedRoute>
-                <MyFavorit appData={{ user, ...appData }} />
+                <MyWatchList user={user} appData={appData} setAppData={setAppData} />
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
               <ProtectedRoute>
-                <Profile user={user} />
+                <Profile user={user} setUser={setUser} />
               </ProtectedRoute>
             } />
 
-            {/* Auth */}
-            <Route path="/auth" element={
-              user ? <Navigate to="/" /> : <AuthPage setUser={setUser} setAppData={setAppData} />
-            } />
+            <Route path="/auth" element={user ? <Navigate to="/" /> : <AuthPage setUser={setUser} setAppData={setAppData} />} />
           </Routes>
         </Container>
       </main>
@@ -85,7 +76,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [appData, setAppData] = useState({
     customLists: [],
-    favorites: [],
     ratings: [],
     quotes: []
   });
@@ -94,24 +84,26 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await api.get('/auth/me');
-        setUser(res.data.user);
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-        const [lists, favs, ratings, quotes] = await Promise.all([
-          api.get('/lists'),
-          api.get('/favorites'),
-          api.get('/ratings'),
-          api.get('/quotes')
+        const res = await api.get('/auth/profile');
+        setUser(res.data);
+
+        const [lists, quotes] = await Promise.all([
+          api.get('/lists').catch(() => ({ data: { data: [] } })),
+          api.get('/quotes').catch(() => ({ data: { data: [] } }))
         ]);
 
         setAppData({
-          customLists: lists.data,
-          favorites: favs.data.map(f => f.movieId),
-          ratings: ratings.data,
-          quotes: quotes.data
+          customLists: lists.data.data || lists.data || [],
+          ratings: [],
+          quotes: quotes.data.data || quotes.data || []
         });
       } catch (err) {
         console.log("Not logged in");
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
     };
     init();

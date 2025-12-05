@@ -14,7 +14,13 @@
     
 }
 
-
+.poster-wrapper {
+    /* Rasio 2:3 (Tinggi 150% dari Lebar) */
+    --bs-aspect-ratio: 150%;
+    position: relative; /* Wajib untuk ratio helper */
+    height: 0; /* Wajib untuk ratio helper */
+}
+   
 .movie-poster-wrapper {
     transition: transform 0.3s ease-in-out;
 }

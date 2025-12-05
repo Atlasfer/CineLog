@@ -1,205 +1,218 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api';
 import {ArrowLeft, Heart, Plus, Star, MessageSquare,Edit2, Trash2, X} from 'lucide-react';
 import {Container, Row, Col, Button, Modal, Form, Badge, Card,Spinner, Alert} from 'react-bootstrap';
-import AddToListModal from './AddList.jsx';
+import AddToListModal from './AddList';
 
-function DetailFilm() {
+function DetailFilm({ user, appData, setAppData }) {
   const { movieId } = useParams(); 
   const navigate = useNavigate();
 
   const [movie, setMovie] = useState(null);
-  const [userData, setUserData] = useState({
-    isFavorite: false,
-    rating: null,
-    quotes: [],
-    listsWithMovie: []
-  });
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // User data untuk film ini
+  const [userRating, setUserRating] = useState(null);
+  const [userQuotes, setUserQuotes] = useState([]);
+  const [listsWithMovie, setListsWithMovie] = useState([]);
 
   // Modal states
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showAddToListModal, setShowAddToListModal] = useState(false);
 
+  //Form states
   const [ratingValue, setRatingValue] = useState(5);
-  const [review, setReview] = useState('');
+  const [reviewText, setReviewText] = useState('');
   const [quoteText, setQuoteText] = useState('');
-  const [character, setCharacter] = useState('');
-  const [editingQuoteId, setEditingQuoteId] = useState(null);
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const [quoter, setQuoter] = useState('');
+  const [editingQuote, setEditingQuote] = useState(null);
 
   useEffect(() => {
     fetchMovieDetail();
-  }, [movieId]);
+    if (user) {
+      fetchUserData();
+    }
+  }, [movieId, user]);
 
   const fetchMovieDetail = async () => {
     try {
       setLoading(true);
       setError('');
-
-      const token = localStorage.getItem('token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      // Ambil detail film + data user dalam satu request
-      const res = await axios.get(`${API_URL}/movies/${movieId}`, { headers });
-
-      setMovie(res.data.movie);
-      setUserData({
-        isFavorite: res.data.isFavorite || false,
-        rating: res.data.rating || null,
-        quotes: res.data.quotes || [],
-        listsWithMovie: res.data.listsWithMovie || []
-      });
-
-      // Jika ada rating, isi form
-      if (res.data.rating) {
-        setRatingValue(res.data.rating.rating);
-        setReview(res.data.rating.review || '');
-      }
+      const res = await api.get(`/movies/${movieId}`); 
+      
+      setMovie(res.data);
     } catch (err) {
-      if (err.response?.status === 401) {
-        navigate('/auth');
-        return;
-      }
-      setError(err.response?.data?.message || 'Film tidak ditemukan');
+      setError(err.message || 'Film tidak ditemukan');
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle Favorite
-  const toggleFavorite = async () => {
+  const fetchUserData = async () => {
     try {
-      if (userData.isFavorite) {
-        await axios.delete(`${API_URL}/favorites/${movieId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      // Fetch rating
+      const ratingRes = await api.get(`/rating/${movieId}`, {
+        params: { userId: user.id }
+      });
+      
+      if (ratingRes.data.personalScore) {
+        setUserRating({
+          score: ratingRes.data.personalScore,
+          review_text: ratingRes.data.personalReview
         });
-      } else {
-        await axios.post(`${API_URL}/favorites`, { movieId }, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
+        setRatingValue(ratingRes.data.personalScore);
+        setReviewText(ratingRes.data.personalReview || '');
       }
-      setUserData(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal mengubah favorit');
+      console.log('No rating yet');
+    }
+
+    try {
+      // Fetch quotes untuk movie ini
+      const quotesRes = await api.get(`/quotes/movie/${movieId}`);
+      setUserQuotes(quotesRes.data.data || quotesRes.data || []);
+    } catch (err) {
+      console.log('No quotes yet');
+    }
+
+    try {
+      // Fetch lists yang berisi movie ini
+      const listsRes = await api.get('/lists');
+      const allLists = listsRes.data.data || listsRes.data || [];
+      const filtered = allLists.filter(list => 
+        list.movies?.some(m => m.tmdb_id === parseInt(movieId))
+      );
+      setListsWithMovie(filtered);
+    } catch (err) {
+      console.log('Error fetching lists');
     }
   };
 
   // Rating
   const saveRating = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     try {
-      const payload = { movieId, rating: ratingValue, review: review || null };
-      if (userData.rating) {
-        await axios.put(`${API_URL}/ratings/${userData.rating.id}`, payload, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const payload = {
+        tmdbId: parseInt(movieId),
+        userId: user.id,
+        score: ratingValue,
+        reviewText: reviewText || null,
+        title: movie.title,
+        release_year: movie.release_year,
+        poster_path: movie.poster_path
+      };
+
+      if (userRating) {
+        // Update existing rating
+        await api.patch(`/rating/${movieId}`, {
+          userId: user.id,
+          score: ratingValue,
+          reviewText: reviewText || null
         });
       } else {
-        await axios.post(`${API_URL}/ratings`, payload, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
+        // Create new rating
+        await api.post('/rating', payload);
       }
+
       setShowRatingModal(false);
-      fetchMovieDetail();
+      fetchUserData();
+      alert('Rating berhasil disimpan!');
     } catch (err) {
-      alert('Gagal menyimpan rating');
+      alert(err.response?.data?.message || 'Gagal menyimpan rating');
     }
   };
 
   const deleteRating = async () => {
     if (!window.confirm('Hapus rating ini?')) return;
+
     try {
-      await axios.delete(`${API_URL}/ratings/${userData.rating.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      await api.delete(`/rating/${movieId}`, {
+        data: { userId: user.id }
       });
-      setUserData(prev => ({ ...prev, rating: null }));
+      setUserRating(null);
+      setRatingValue(5);
+      setReviewText('');
+      alert('Rating berhasil dihapus');
     } catch (err) {
       alert('Gagal menghapus rating');
     }
   };
-
   // Quote
+  const openQuoteModal = (quote = null) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (quote) {
+      setEditingQuote(quote);
+      setQuoteText(quote.quote_text);
+      setQuoter(quote.quoter || '');
+    } else {
+      setEditingQuote(null);
+      setQuoteText('');
+      setQuoter('');
+    }
+    setShowQuoteModal(true);
+  };
+
   const saveQuote = async () => {
     try {
-      const payload = { movieId, quote: quoteText, character: character || null };
-      if (editingQuoteId) {
-        await axios.put(`${API_URL}/quotes/${editingQuoteId}`, payload, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
+      const payload = {
+        tmdbId: parseInt(movieId),
+        quoteText,
+        quoter: quoter || 'Unknown'
+      };
+
+      if (editingQuote) {
+        await api.put(`/quotes/${editingQuote.id}`, payload);
       } else {
-        await axios.post(`${API_URL}/quotes`, payload, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
+        await api.post('/quotes', payload);
       }
+
       setShowQuoteModal(false);
-      resetQuoteForm();
-      fetchMovieDetail();
+      setEditingQuote(null);
+      setQuoteText('');
+      setQuoter('');
+      fetchUserData();
+      alert('Quote berhasil disimpan!');
     } catch (err) {
-      alert('Gagal menyimpan quote');
+      alert(err.response?.data?.message || 'Gagal menyimpan quote');
     }
   };
 
   const deleteQuote = async (quoteId) => {
     if (!window.confirm('Hapus quote ini?')) return;
+
     try {
-      await axios.delete(`${API_URL}/quotes/${quoteId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setUserData(prev => ({
-        ...prev,
-        quotes: prev.quotes.filter(q => q.id !== quoteId)
-      }));
+      await api.delete(`/quotes/${quoteId}`);
+      fetchUserData();
+      alert('Quote berhasil dihapus');
     } catch (err) {
       alert('Gagal menghapus quote');
     }
   };
 
-  const openQuoteModal = (quote = null) => {
-    if (quote) {
-      setEditingQuoteId(quote.id);
-      setQuoteText(quote.quote);
-      setCharacter(quote.character || '');
-    } else {
-      resetQuoteForm();
-    }
-    setShowQuoteModal(true);
-  };
-
-  const resetQuoteForm = () => {
-    setEditingQuoteId(null);
-    setQuoteText('');
-    setCharacter('');
-  };
-
   // List
-  const addToList = async (listId) => {
-    try {
-      await axios.post(`${API_URL}/lists/${listId}/movies`, { movieId }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      fetchMovieDetail();
-      setShowAddToListModal(false);
-    } catch (err) {
-      alert('Gagal menambah ke list');
-    }
-  };
-
   const removeFromList = async (listId) => {
+    if (!window.confirm('Hapus dari list ini?')) return;
+
     try {
-      await axios.delete(`${API_URL}/lists/${listId}/movies/${movieId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      fetchMovieDetail();
+      await api.delete(`/lists/${listId}/movies/${movieId}`);
+      fetchUserData();
+      alert('Berhasil dihapus dari list');
     } catch (err) {
       alert('Gagal menghapus dari list');
     }
   };
 
-  // Loading & Error
   if (loading) {
     return (
       <div className="min-vh-100 bg-dark d-flex align-items-center justify-content-center">
@@ -217,59 +230,101 @@ function DetailFilm() {
     );
   }
 
-  return (
-    <div className="bg-gray-950 min-vh-100">
-      {/* Hero Section */}
-      <div className="position-relative">
-        <div className="position-absolute inset-0 backdrop-container">
-          <img src={movie.backdrop || movie.poster} alt="" className="w-100 h-100 object-fit-cover backdrop-img" />
-          <div className="position-absolute inset-0 bg-dark-gradient-overlay"></div>
-        </div>
 
-        <Container className="position-relative py-5">
-          <Button onClick={() => navigate(-1)} variant="link" className="text-secondary text-decoration-none d-flex align-items-center gap-2 mb-4">
+  return (
+    <div className="bg-dark min-vh-100">
+      {/* Hero Section */}
+      <div className="position-relative" style={{ minHeight: '60vh' }}>
+        <div 
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.9) 100%), url(https://image.tmdb.org/t/p/original${movie.backdrop_path || movie.poster_path})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+
+        <Container className="position-relative py-5 g-5" style={{ zIndex: 1 }}>
+          <Button 
+            onClick={() => navigate(-1)} 
+            variant="link" 
+            className="text-secondary text-decoration-none d-flex align-items-center gap-2 mb-4"
+          >
             <ArrowLeft size={20} /> Back
           </Button>
 
-          <Row className="g-5">
-            <Col xs={12} lg={4}>
-              <div className="ratio ratio-2x3 rounded-3 overflow-hidden shadow-lg">
-                <img src={movie.poster} alt={movie.title} className="w-100 h-100 object-fit-cover" />
+          <Row className="g-5 align-items-center">
+            <Col xs={12} lg={3}>
+              <div style={{ width: '300px', height: '450px' }} className="rounded-5 overflow-hidden shadow-lg">
+                <img 
+                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
+                  alt={movie.title} 
+                  className="w-100 h-100 object-fit-cover"
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/300x450?text=No+Image';
+                  }}
+                />
               </div>
             </Col>
 
             <Col xs={12} lg={8}>
-              <h1 className="text-white display-4">{movie.title}</h1>
-              <div className="d-flex align-items-center gap-3 my-3">
-                <Badge bg="danger">{movie.year || movie.release_date?.split('-')[0]}</Badge>
-                <span className="text-secondary">•</span>
-                <span className="text-light">{movie.genres?.map(g => g.name).join(', ') || movie.genre}</span>
+              <h1 className="text-white display-4 mb-3">{movie.title}</h1>
+              
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <Badge bg="danger">{movie.release_year || 'N/A'}</Badge>
+                {movie.runtime && (
+                  <>
+                    <span className="text-secondary">•</span>
+                    <span className="text-light">{movie.runtime} min</span>
+                  </>
+                )}
+                {movie.genres && movie.genres.length > 0 && (
+                  <>
+                    <span className="text-secondary">•</span>
+                    <span className="text-light">{movie.genres.map(g => g.name).join(', ')}</span>
+                  </>
+                )}
               </div>
 
-              <p className="text-secondary fs-5">{movie.overview || movie.description}</p>
+              {movie.vote_average && (
+                <div className="d-flex align-items-center gap-2 mb-4">
+                  <Star className="text-warning" fill="currentColor" size={20} />
+                  <span className="text-white fs-6">{movie.vote_average.toFixed(1)}/10</span>
+                  <span className="text-secondary">TMDB</span>
+                </div>
+              )}
 
-              <div className="d-flex flex-wrap gap-3 my-4">
-                <Button
-                  onClick={toggleFavorite}
-                  variant={userData.isFavorite ? 'danger' : 'secondary'}
+              <p className="text-light fs-6 mb-4">{movie.overview}</p>
+
+              <div className="d-flex flex-wrap gap-3 mb-4">
+                <Button 
+                  onClick={() => setShowAddToListModal(true)} 
+                  variant="danger"
                   className="d-flex align-items-center gap-2"
                 >
-                  <Heart size={20} fill={userData.isFavorite ? 'currentColor' : 'none'} />
-                  {userData.isFavorite ? 'Unfavorite' : 'Favorite'}
-                </Button>
-                <Button onClick={() => setShowAddToListModal(true)} variant="secondary" className="d-flex align-items-center gap-2">
                   <Plus size={20} /> Add to List
                 </Button>
               </div>
 
-              {userData.listsWithMovie.length > 0 && (
-                <div className="d-flex flex-wrap gap-2 mt-3">
-                  {userData.listsWithMovie.map(list => (
-                    <Badge key={list.id} bg="secondary" className="d-flex align-items-center gap-2">
-                      {list.name}
-                      <X size={16} className="cursor-pointer" onClick={() => removeFromList(list.id)} />
-                    </Badge>
-                  ))}
+              {listsWithMovie.length > 0 && (
+                <div>
+                  <p className="text-secondary small mb-2">In your lists:</p>
+                  <div className="d-flex flex-wrap gap-2">
+                    {listsWithMovie.map(list => (
+                      <Badge 
+                        key={list.id} 
+                        bg="secondary" 
+                        className="d-flex align-items-center gap-2"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {list.name}
+                        <X 
+                          size={16} 
+                          onClick={() => removeFromList(list.id)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
             </Col>
@@ -282,33 +337,52 @@ function DetailFilm() {
         <Card className="bg-secondary bg-opacity-10 border-secondary border-opacity-25 mb-4">
           <Card.Body>
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h3 className="text-white d-flex align-items-center gap-3">
+              <h3 className="text-white d-flex align-items-center gap-3 mb-0">
                 <Star className="text-danger" /> Your Rating
               </h3>
-              {userData.rating ? (
-                <div className="d-flex gap-2">
-                  <Button size="sm" onClick={() => setShowRatingModal(true)}>Edit</Button>
-                  <Button size="sm" variant="outline-danger" onClick={deleteRating}>Delete</Button>
-                </div>
+              {user ? (
+                userRating ? (
+                  <div className="d-flex gap-2">
+                    <Button size="sm" variant='outline-primary' onClick={() => setShowRatingModal(true)}>
+                      <Edit2 size={16} /> Edit
+                    </Button>
+                    <Button size="sm" variant="outline-danger" onClick={deleteRating}>
+                      <Trash2 size={16} /> Delete
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="danger" onClick={() => setShowRatingModal(true)}>
+                    Add Rating
+                  </Button>
+                )
               ) : (
-                <Button variant="danger" onClick={() => setShowRatingModal(true)}>Add Rating</Button>
+                <Button variant="danger" onClick={() => navigate('/auth')}>
+                  Login to Rate
+                </Button>
               )}
             </div>
 
-            {userData.rating ? (
+            {userRating ? (
               <div className="p-4 bg-secondary bg-opacity-25 rounded-3">
-                <div className="d-flex gap-1 mb-2">
+                <div className="d-flex gap-1 mb-3">
                   {[...Array(10)].map((_, i) => (
-                    <Star key={i} size={28} fill={i < userData.rating.rating ? '#ffc107' : 'none'} className={i < userData.rating.rating ? 'text-warning' : 'text-secondary'} />
+                    <Star 
+                      key={i} 
+                      size={28} 
+                      fill={i < userRating.score ? '#ffc107' : 'none'} 
+                      className={i < userRating.score ? 'text-warning' : 'text-secondary'} 
+                    />
                   ))}
-                  <span className="text-white fs-4 ms-2">{userData.rating.rating}/10</span>
+                  <span className="text-white fs-4 ms-2">{userRating.score}/10</span>
                 </div>
-                {userData.rating.review && <p className="text-light fst-italic">"{userData.rating.review}"</p>}
+                {userRating.review_text && (
+                  <p className="text-light fst-italic mb-0">"{userRating.review_text}"</p>
+                )}
               </div>
             ) : (
               <div className="text-center py-5 text-secondary">
-                <Star size={48} className="mb-3" />
-                <p>Belum ada rating</p>
+                <Star size={48} className="mb-3 opacity-50" />
+                <p className="mb-0">Belum ada rating</p>
               </div>
             )}
           </Card.Body>
@@ -317,34 +391,64 @@ function DetailFilm() {
         {/* Quotes Section */}
         <Card className="bg-secondary bg-opacity-10 border-secondary border-opacity-25">
           <Card.Body>
-            <div className="d-flex justify-content-between mb-4">
-              <h3 className="text-white d-flex align-items-center gap-3">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h3 className="text-white d-flex align-items-center gap-3 mb-0">
                 <MessageSquare className="text-danger" /> Quotes
               </h3>
-              <Button variant="danger" size="sm" onClick={() => openQuoteModal()}>Add Quote</Button>
+              {user ? (
+                <Button variant="danger" size="sm" onClick={() => openQuoteModal()}>
+                  Add Quote
+                </Button>
+              ) : (
+                <Button variant="danger" size="sm" onClick={() => navigate('/auth')}>
+                  Login to Add Quote
+                </Button>
+              )}
             </div>
 
-            {userData.quotes.length > 0 ? (
-              userData.quotes.map(q => (
-                <div key={q.id} className="p-3 bg-secondary bg-opacity-20 rounded mb-3 d-flex justify-content-between">
-                  <div>
-                    <p className="text-white">"{q.quote}"</p>
-                    <p className="text-secondary small">— {q.character || 'Unknown'}</p>
+            {userQuotes.length > 0 ? (
+              <div className="d-flex flex-column gap-3">
+                {userQuotes.map(quote => (
+                  <div 
+                    key={quote.id} 
+                    className="p-3 bg-secondary bg-opacity-25 rounded-3 d-flex justify-content-between align-items-start"
+                  >
+                    <div className="flex-grow-1">
+                      <p className="text-white mb-2">"{quote.quote_text}"</p>
+                      <p className="text-secondary small mb-0">— {quote.quoter || 'Unknown'}</p>
+                    </div>
+                    {user && (
+                      <div className="d-flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline-primary" 
+                          onClick={() => openQuoteModal(quote)}
+                        >
+                          <Edit2 size={16} />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline-danger" 
+                          onClick={() => deleteQuote(quote.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <div className="d-flex gap-2">
-                    <Button size="sm" variant="outline-secondary" onClick={() => openQuoteModal(q)}>Edit</Button>
-                    <Button size="sm" variant="outline-danger" onClick={() => deleteQuote(q.id)}>Delete</Button>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <p className="text-secondary text-center py-4">Belum ada quote</p>
+              <div className="text-center py-5 text-secondary">
+                <MessageSquare size={48} className="mb-3 opacity-50" />
+                <p className="mb-0">Belum ada quote</p>
+              </div>
             )}
           </Card.Body>
         </Card>
       </Container>
 
-      {/* Modals */}
+      {/* Rating Modal */}
       <Modal show={showRatingModal} onHide={() => setShowRatingModal(false)} centered>
         <Modal.Header closeButton className="bg-dark text-white border-secondary">
           <Modal.Title>Rate {movie.title}</Modal.Title>
@@ -352,52 +456,103 @@ function DetailFilm() {
         <Modal.Body className="bg-dark text-white">
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label>Rating</Form.Label>
-              <div className="d-flex gap-2">
+              <Form.Label>Rating (1-10)</Form.Label>
+              <div className="d-flex gap-2 flex-wrap justify-content-center">
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <Button key={n} variant="link" onClick={() => setRatingValue(n)}>
-                    <Star size={32} fill={n <= ratingValue ? '#ffc107' : 'none'} className={n <= ratingValue ? 'text-warning' : 'text-secondary'} />
+                  <Button 
+                    key={n} 
+                    variant="link" 
+                    onClick={() => setRatingValue(n)}
+                    className="p-1"
+                  >
+                    <Star 
+                      size={32} 
+                      fill={n <= ratingValue ? '#ffc107' : 'none'} 
+                      className={n <= ratingValue ? 'text-warning' : 'text-secondary'} 
+                    />
                   </Button>
                 ))}
               </div>
+              <p className="text-center text-white mt-2 fs-4">{ratingValue}/10</p>
             </Form.Group>
             <Form.Group>
-              <Form.Label>Review (opsional)</Form.Label>
-              <Form.Control as="textarea" rows={3} value={review} onChange={e => setReview(e.target.value)} className="bg-secondary text-white" />
+              <Form.Label>Review (optional)</Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={4} 
+                value={reviewText} 
+                onChange={e => setReviewText(e.target.value)} 
+                className="bg-secondary text-white border-0"
+                placeholder="Tulis review kamu tentang film ini..."
+              />
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer className="bg-dark">
+        <Modal.Footer className="bg-dark border-secondary">
           <Button variant="secondary" onClick={() => setShowRatingModal(false)}>Batal</Button>
-          <Button variant="danger" onClick={saveRating}>Simpan</Button>
+          <Button variant="danger" onClick={saveRating}>Simpan Rating</Button>
         </Modal.Footer>
       </Modal>
 
+      {/* Quote Modal */}
       <Modal show={showQuoteModal} onHide={() => setShowQuoteModal(false)} centered>
-        <Modal.Header closeButton className="bg-dark text-white"><Modal.Title>{editingQuoteId ? 'Edit' : 'Add'} Quote</Modal.Title></Modal.Header>
+        <Modal.Header closeButton className="bg-dark text-white border-secondary">
+          <Modal.Title>{editingQuote ? 'Edit' : 'Add'} Quote</Modal.Title>
+        </Modal.Header>
         <Modal.Body className="bg-dark text-white">
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Quote</Form.Label>
-              <Form.Control as="textarea" rows={3} value={quoteText} onChange={e => setQuoteText(e.target.value)} />
+              <Form.Control 
+                as="textarea" 
+                rows={4} 
+                value={quoteText} 
+                onChange={e => setQuoteText(e.target.value)} 
+                className="bg-secondary text-white border-0"
+                placeholder="Masukkan quote dari film ini..."
+                required
+              />
             </Form.Group>
             <Form.Group>
-              <Form.Label>Character</Form.Label>
-              <Form.Control type="text" value={character} onChange={e => setCharacter(e.target.value)} placeholder="Siapa yang bilang?" />
+              <Form.Label>Character/Person</Form.Label>
+              <Form.Control 
+                type="text" 
+                value={quoter} 
+                onChange={e => setQuoter(e.target.value)} 
+                className="bg-secondary text-white border-0"
+                placeholder="Siapa yang mengucapkan quote ini?"
+              />
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer className="bg-dark">
+        <Modal.Footer className="bg-dark border-secondary">
           <Button variant="secondary" onClick={() => setShowQuoteModal(false)}>Batal</Button>
-          <Button variant="danger" onClick={saveQuote}>Simpan</Button>
+          <Button 
+            variant="danger" 
+            onClick={saveQuote}
+            disabled={!quoteText.trim()}
+          >
+            Simpan Quote
+          </Button>
         </Modal.Footer>
       </Modal>
 
-      {showAddToListModal && (
+      {/* Add to List Modal */}
+      {showAddToListModal && movie && (
         <AddToListModal
-          movieId={movieId}
-          onAddToList={addToList}
+          show={showAddToListModal}
+          movie={movie}
           onClose={() => setShowAddToListModal(false)}
+          onListAdded={() => {
+            fetchUserData();
+            // Refresh lists di appData
+            api.get('/lists').then(res => {
+              setAppData(prev => ({
+                ...prev,
+                customLists: res.data.data || res.data || []
+              }));
+            });
+          }}
         />
       )}
     </div>

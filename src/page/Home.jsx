@@ -1,8 +1,7 @@
 // pages/HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { Heart, Plus, Search } from 'lucide-react';
-import { Container, Row, Col, Card, Form, Button, Nav, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import { Container, Row, Col, Card, Form, Button, Nav, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 
@@ -10,44 +9,42 @@ import Header from '../component/Header';
 import Carousels from '../component/Carousels';
 import AddToListModal from './AddList';
 
-export default function HomePage() {
+export default function HomePage({ user, appData, setAppData }) {
   const [movies, setMovies] = useState([]);
   const [trending, setTrending] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [customLists, setCustomLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
+  const [genres, setGenres] = useState([]);
 
   const [showAddToListModal, setShowAddToListModal] = useState(false);
-  const [selectedMovieId, setSelectedMovieId] = useState(null);
+  const [selectedMovie, setSelectedMovie] = useState(null);
 
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const TMDB_API = 'https://api.themoviedb.org/3';
-  const TMDB_KEY = import.meta.env.VITE_TMDB_KEY;
 
   // Fetch data saat mount
   useEffect(() => {
-    fetchUserData();
+    fetchGenres();
     fetchTrendingMovies();
     fetchDiscoverMovies();
   }, []);
 
-  const fetchUserData = async () => {
+  useEffect(() => {
+    if (searchQuery) {
+      searchMovies();
+    } else if (selectedGenre !== 'All') {
+      filterByGenre();
+    } else {
+      fetchDiscoverMovies();
+    }
+  }, [searchQuery, selectedGenre]);
+
+  const fetchGenres = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const [favRes, listRes] = await Promise.all([
-        axios.get(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/lists`, { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-
-      setFavorites(favRes.data.favorites || []);
-      setCustomLists(listRes.data.lists || listRes.data);
+      const res = await api.get('/movies/genres');
+      setGenres(res.data || []);
     } catch (err) {
-      console.log("User not logged in or error:", err);
+      console.error('Error fetching genres:', err);
     }
   };
 
@@ -56,7 +53,7 @@ export default function HomePage() {
       const res = await api.get('/movies/trending', {
         params: { timeWindow: 'week' }
       });
-      setTrending(res.data.results.slice(0, 10));
+      setTrending(res.data.slice(0, 10));
     } catch (err) {
       console.error(err);
     }
@@ -64,56 +61,73 @@ export default function HomePage() {
 
   const fetchDiscoverMovies = async () => {
     try {
+      setLoading(true);
       const res = await api.get('/movies/discover', {
         params: {
           sort_by: 'popularity.desc',
           page: 1
         }
       });
-      setMovies(res.data.results);
-      setLoading(false);
+      setMovies(res.data);
     } catch (err) {
+      console.error('Error fetching movies:', err);
+    } finally {
       setLoading(false);
     }
   };
 
-  const toggleFavorite = async (movieId) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/auth');
+  const searchMovies = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/movies/search', {
+        params: { query: searchQuery }
+      });
+      setMovies(res.data);
+    } catch (err) {
+      console.error('Error searching movies:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterByGenre = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/movies/discover', {
+        params: {
+          genreIds: selectedGenre,
+          sortBy: 'popularity.desc',
+          page: 1
+        }
+      });
+      setMovies(res.data);
+    } catch (err) {
+      console.error('Error filtering movies:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToList = (movie) => {
+    if (!user) {
+      navigate('/auth', { state: { from: '/' } });
       return;
     }
-
-    try {
-      if (favorites.includes(movieId)) {
-        await axios.delete(`${API_URL}/favorites/${movieId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setFavorites(prev => prev.filter(id => id !== movieId));
-      } else {
-        await axios.post(`${API_URL}/favorites`, { movieId }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setFavorites(prev => [...prev, movieId]);
-      }
-    } catch (err) {
-      alert('Gagal mengubah favorit');
-    }
+    setSelectedMovie(movie);
+    setShowAddToListModal(true);
   };
 
-  const filteredMovies = movies.filter(movie => {
-    const matchesSearch = movie.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGenre = selectedGenre === 'All' || movie.genre_ids?.includes(parseInt(selectedGenre));
-    return matchesSearch && matchesGenre;
-  });
+  const handleMovieClick = (movieId) => {
+    navigate(`/movie/${movieId}`);
+  };
 
   return (
     <div className="bg-dark min-vh-100 text-white">
       {/* Header Baru */}
-      <Header onNavigateToWatchlist={() => navigate('/lists')} />
+      <Header onNavigateToWatchlist={() => navigate('/watchlist')} />
 
       {/* Trending Carousel */}
-      <div id="trending-section">
+      <div id="trending">
         <Carousels movies={trending} />
       </div>
 
@@ -130,31 +144,37 @@ export default function HomePage() {
         />
 
         {/* Genre Filter */}
-        <div className="mb-4 overflow-x-auto">
+        <div className="mb-4 overflow-auto">
           <Nav variant="pills" className="flex-nowrap">
-            {['All', '28', '12', '16', '35', '27'].map(id => {
-              const genreNames = {
-                'All': 'All',
-                '28': 'Action',
-                '12': 'Adventure',
-                '16': 'Animation',
-                '35': 'Comedy',
-                '27': 'Horror'
-              };
-              return (
-                <Nav.Item key={id}>
-                  <Nav.Link
-                    active={selectedGenre === id}
-                    onClick={() => setSelectedGenre(id)}
-                    className="text-white"
-                  >
-                    {genreNames[id] || id}
-                  </Nav.Link>
-                </Nav.Item>
-              );
-            })}
+            <Nav.Item key="all">
+              <Nav.Link
+                active={selectedGenre === 'All'}
+                onClick={() => {
+                  setSelectedGenre('All');
+                  setSearchQuery('');
+                }}
+                className={selectedGenre === 'All' ? 'bg-danger text-white' : 'text-white'}
+              >
+                All
+              </Nav.Link>
+            </Nav.Item>
+            {genres.map(genre => (
+              <Nav.Item key={genre.id}>
+                <Nav.Link
+                  active={selectedGenre === genre.id.toString()}
+                  onClick={() => {
+                    setSelectedGenre(genre.id.toString());
+                    setSearchQuery('');
+                  }}
+                  className={selectedGenre === genre.id.toString() ? 'bg-danger text-white' : 'text-white'}
+                >
+                  {genre.name}
+                </Nav.Link>
+              </Nav.Item>
+            ))}
           </Nav>
         </div>
+        
         {/* Movie Grid */}
         {loading ? (
           <div className="text-center py-5">
@@ -162,14 +182,14 @@ export default function HomePage() {
           </div>
         ) : (
           <Row xs={2} sm={3} md={4} lg={6} className="g-4">
-            {filteredMovies.map(movie => {
-              const isFavorite = favorites.includes(movie.id.toString());
+            {movies.map(movie => {
               return (
-                <Col key={movie.id}>
+                <Col key={movie.tmdb_id}>
                   <Card 
                     className="bg-dark border-0 overflow-hidden h-100 shadow-lg movie-card"
                     role="button"
-                    onClick={() => navigate(`/movie/${movie.id}`)}
+                    onClick={() => handleMovieClick(movie.tmdb_id)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <div className="position-relative">
                       <Card.Img
@@ -178,27 +198,18 @@ export default function HomePage() {
                         alt={movie.title}
                         className="object-fit-cover"
                         style={{ height: '300px' }}
+                        onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/300x450?text=No+Image';
+                      }}
                       />
                       <div className="position-absolute top-0 start-0 w-100 h-100 bg-black opacity-0 hover:opacity-80 transition d-flex align-items-center justify-content-center gap-3">
-                        <Button
-                          size="sm"
-                          variant={isFavorite ? 'danger' : 'light'}
-                          className="rounded-circle p-3"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(movie.id.toString());
-                          }}
-                        >
-                          <Heart size={20} fill={isFavorite ? 'red' : 'none'} />
-                        </Button>
                         <Button
                           size="sm"
                           variant="light"
                           className="rounded-circle p-3"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedMovieId(movie.id.toString());
-                            setShowAddToListModal(true);
+                            handleAddToList(movie);
                           }}
                         >
                           <Plus size={20} />
@@ -210,8 +221,14 @@ export default function HomePage() {
                         {movie.title}
                       </Card.Title>
                       <Card.Text className="text-secondary small">
-                        {new Date(movie.release_date).getFullYear() || 'N/A'}
+                        {movie.release_year || 'N/A'}
                       </Card.Text>
+                      {movie.vote_average && (
+                      <div className="d-flex align-items-center gap-1">
+                        <span className="text-warning">★</span>
+                        <span className="text-white small">{movie.vote_average.toFixed(1)}</span>
+                      </div>
+                    )}
                     </Card.Body>
                   </Card>
                 </Col>
@@ -222,15 +239,25 @@ export default function HomePage() {
       </Container>
 
       {/* Add to List Modal */}
-      <AddToListModal
-        show={showAddToListModal}
-        movieId={selectedMovieId}
-        onClose={() => {
-          setShowAddToListModal(false);
-          setSelectedMovieId(null);
-        }}
-        onListAdded={() => fetchUserData()}
-      />
+      {selectedMovie && (
+        <AddToListModal
+          show={showAddToListModal}
+          movie={selectedMovie}
+          onClose={() => {
+            setShowAddToListModal(false);
+            setSelectedMovie(null);
+          }}
+          onListAdded={() => {
+            // Refresh lists
+            api.get('/lists').then(res => {
+              setAppData(prev => ({
+                ...prev,
+                customLists: res.data.data || res.data || []
+              }));
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

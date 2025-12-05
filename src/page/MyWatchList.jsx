@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, X, List, Film } from 'lucide-react';
-import { Container, Row, Col, Card, Button, Modal, Form, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import { Container, Row, Col, Card, Button, Modal, Form, Alert, Spinner, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import api from '../lib/api';
 
-function MyWatchList() {
+function MyWatchList({ user, appData, setAppData }) {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,9 +16,7 @@ function MyWatchList() {
   const [listDescription, setListDescription] = useState('');
 
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-  // Fetch semua list user
   useEffect(() => {
     fetchLists();
   }, []);
@@ -28,21 +26,19 @@ function MyWatchList() {
       setLoading(true);
       setError('');
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/auth');
-        return;
+      const res = await api.get('/lists');
+      const listsData = res.data.data || res.data || [];
+      setLists(listsData);
+
+      // Update appData juga
+      if (setAppData) {
+        setAppData(prev => ({
+          ...prev,
+          customLists: listsData
+        }));
       }
-
-      const res = await axios.get(`${API_URL}/lists`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      // Asumsi backend mengembalikan { lists: [...] } atau langsung array
-      setLists(res.data.lists || res.data);
     } catch (err) {
       if (err.response?.status === 401) {
-        localStorage.removeItem('token');
         navigate('/auth');
       } else {
         setError('Gagal memuat daftar');
@@ -52,69 +48,77 @@ function MyWatchList() {
     }
   };
 
-  // Buat list baru
   const createList = async () => {
-    if (!listName.trim()) return;
+    if (!listName.trim()) {
+      alert('Nama list harus diisi');
+      return;
+    }
 
     try {
-      await axios.post(
-        `${API_URL}/lists`,
-        { name: listName, description: listDescription },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      closeModal();
-      fetchLists();
+      const res = await api.post('/lists', {
+        name: listName,
+        description: listDescription || ''
+      });
+
+      if (res.data.success) {
+        closeModal();
+        fetchLists();
+        alert('List berhasil dibuat!');
+      }
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal membuat list');
     }
   };
 
-  // Update list
   const updateList = async () => {
     if (!editingList || !listName.trim()) return;
 
     try {
-      await axios.put(
-        `${API_URL}/lists/${editingList.id}`,
-        { name: listName, description: listDescription },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      closeModal();
-      fetchLists();
+      const res = await api.put(`/lists/${editingList.id}`, {
+        name: listName,
+        description: listDescription || ''
+      });
+
+      if (res.data.success) {
+        closeModal();
+        fetchLists();
+        alert('List berhasil diupdate!');
+      }
     } catch (err) {
-      alert('Gagal mengupdate list');
+      alert(err.response?.data?.message || 'Gagal mengupdate list');
     }
   };
 
-  // Hapus list
   const deleteList = async (listId) => {
     if (!window.confirm('Hapus list ini? Semua film di dalamnya akan dihapus dari list.')) return;
 
     try {
-      await axios.delete(`${API_URL}/lists/${listId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      fetchLists();
+      const res = await api.delete(`/lists/${listId}`);
+      
+      if (res.data.success) {
+        fetchLists();
+        alert('List berhasil dihapus!');
+      }
     } catch (err) {
-      alert('Gagal menghapus list');
+      alert(err.response?.data?.message || 'Gagal menghapus list');
     }
   };
 
-  // Hapus film dari list
-  const removeMovieFromList = async (listId, movieId) => {
+  const removeMovieFromList = async (listId, tmdbId) => {
     if (!window.confirm('Hapus film ini dari list?')) return;
 
     try {
-      await axios.delete(`${API_URL}/lists/${listId}/movies/${movieId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      fetchLists(); // refresh
+      const res = await api.delete(`/lists/${listId}/movies/${tmdbId}`);
+      
+      if (res.data.success) {
+        fetchLists();
+        alert('Film berhasil dihapus dari list!');
+      }
     } catch (err) {
-      alert('Gagal menghapus film dari list');
+      alert(err.response?.data?.message || 'Gagal menghapus film dari list');
     }
   };
 
-  // Buka modal create/edit
   const openCreateModal = () => {
     setEditingList(null);
     setListName('');
@@ -136,9 +140,8 @@ function MyWatchList() {
     setListDescription('');
   };
 
-  // Navigasi ke detail film
-  const goToMovie = (movieId) => {
-    navigate(`/movie/${movieId}`);
+  const goToMovie = (tmdbId) => {
+    navigate(`/movie/${tmdbId}`);
   };
 
   if (loading) {
@@ -166,7 +169,12 @@ function MyWatchList() {
               <p className="text-secondary lead">Kelola koleksi film sesuai keinginanmu</p>
             </Col>
             <Col md={4} className="text-md-end">
-              <Button onClick={openCreateModal} variant="danger" size="lg" className="d-flex align-items-center gap-2">
+              <Button 
+                onClick={openCreateModal} 
+                variant="danger" 
+                size="lg" 
+                className="d-flex align-items-center gap-2 ms-auto"
+              >
                 <Plus size={20} />
                 Buat List Baru
               </Button>
@@ -191,71 +199,114 @@ function MyWatchList() {
             </Button>
           </Card>
         ) : (
-          <div className="space-y-5">
-            {lists.map(list => (
-              <Card key={list.id} className="bg-dark border-secondary shadow-lg">
-                <Card.Body className="p-4">
-                  <div className="d-flex justify-content-between align-items-start mb-4">
-                    <div>
-                      <h3 className="text-white h4 mb-2">{list.name}</h3>
-                      {list.description && <p className="text-secondary mb-1">{list.description}</p>}
-                      <small className="text-muted">
-                        Dibuat {new Date(list.createdAt).toLocaleDateString('id-ID')}
-                      </small>
-                      <span className="badge bg-danger bg-opacity-25 text-danger ms-3">
-                        {list.movieIds?.length || 0} film
-                      </span>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <Button size="sm" variant="outline-secondary" onClick={() => openEditModal(list)}>
-                        <Edit2 size={18} />
-                      </Button>
-                      <Button size="sm" variant="outline-danger" onClick={() => deleteList(list.id)}>
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
-                  </div>
+          <div className="d-flex flex-column gap-4">
+            {lists.map(list => {
+              const movieCount = list.movies?.length || 0;
+              const createdDate = new Date(list.created_at).toLocaleDateString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
 
-                  {list.movieIds && list.movieIds.length > 0 ? (
-                    <Row xs={2} sm={3} md={4} lg={6} className="g-4">
-                      {list.movieIds.map(movieId => (
-                        <Col key={movieId}>
-                          <div
-                            className="position-relative overflow-hidden rounded-3 shadow cursor-pointer"
-                            onClick={() => goToMovie(movieId)}
-                          >
-                            <div className="ratio ratio-2x3 bg-secondary bg-opacity-10">
-                              <div className="d-flex align-items-center justify-content-center">
-                                <Film size={40} className="text-secondary" />
+              return (
+                <Card key={list.id} className="bg-dark border-secondary shadow-lg">
+                  <Card.Body className="p-4">
+                    <div className="d-flex justify-content-between align-items-start mb-4">
+                      <div>
+                        <h3 className="text-white h4 mb-2">{list.name}</h3>
+                        {list.description && (
+                          <p className="text-secondary mb-2">{list.description}</p>
+                        )}
+                        <div className="d-flex align-items-center gap-3">
+                          <Badge bg='secondary' className="text-secondary bg-opacity-25">
+                            Dibuat {createdDate}
+                          </Badge>
+                          <Badge bg="danger" className="bg-opacity-25 text-danger">
+                            {movieCount} film
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="d-flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline-secondary" 
+                          onClick={() => openEditModal(list)}
+                        >
+                          <Edit2 size={18} />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline-danger" 
+                          onClick={() => deleteList(list.id)}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {list.movies && list.movies.length > 0 ? (
+                      <Row xs={2} sm={3} md={4} lg={6} className="g-3">
+                        {list.movies.map(movie => (
+                          <Col key={movie.tmdb_id}>
+                            <div className="position-relative">
+                              <div
+                                className="position-relative overflow-hidden rounded-3 shadow cursor-pointer"
+                                onClick={() => goToMovie(movie.tmdb_id)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <div className="ratio-2x3">
+                                  {movie.poster_path ? (
+                                    <img
+                                      src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                                      alt={movie.title}
+                                      className="object-fit-cover w-100 h-100"
+                                      onError={(e) => {
+                                        e.target.src = 'https://via.placeholder.com/300x450?text=No+Image';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="d-flex align-items-center justify-content-center bg-secondary bg-opacity-10">
+                                      <Film size={40} className="text-secondary" />
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  className="position-absolute top-0 end-0 m-2 rounded-circle p-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeMovieFromList(list.id, movie.tmdb_id);
+                                  }}
+                                >
+                                  <X size={16} />
+                                </Button>
+                              </div>
+                              <div className="mt-2">
+                                <small className="text-white d-block text-truncate">
+                                  {movie.title}
+                                </small>
+                                {movie.release_year && (
+                                  <small className="text-secondary">
+                                    {movie.release_year}
+                                  </small>
+                                )}
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              className="position-absolute top-0 end-0 m-2 rounded-circle"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeMovieFromList(list.id, movieId);
-                              }}
-                            >
-                              <X size={16} />
-                            </Button>
-                          </div>
-                          <div className="mt-2 text-center">
-                            <small className="text-white d-block text-truncate">Film ID: {movieId}</small>
-                          </div>
-                        </Col>
-                      ))}
-                    </Row>
-                  ) : (
-                    <Alert variant="secondary" className="text-center py-4">
-                      <Film size={32} className="mb-3 text-muted" />
-                      <p className="text-secondary mb-0">Belum ada film di list ini</p>
-                    </Alert>
-                  )}
-                </Card.Body>
-              </Card>
-            ))}
+                          </Col>
+                        ))}
+                      </Row>
+                    ) : (
+                      <Alert variant="secondary" className="text-center py-4 mb-0">
+                        <Film size={32} className="mb-3 text-muted" />
+                        <p className="text-secondary mb-0">Belum ada film di list ini</p>
+                        <small className="text-muted">Tambahkan film dari halaman detail film</small>
+                      </Alert>
+                    )}
+                  </Card.Body>
+                </Card>
+              );
+            })}
           </div>
         )}
       </Container>
@@ -270,7 +321,7 @@ function MyWatchList() {
         <Modal.Body className="bg-dark">
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label className="text-light">Nama List</Form.Label>
+              <Form.Label className="text-light">Nama List *</Form.Label>
               <Form.Control
                 type="text"
                 value={listName}
@@ -278,6 +329,7 @@ function MyWatchList() {
                 className="bg-secondary text-white border-secondary"
                 placeholder="Contoh: Must-Watch 2025, Film Horor Favorit"
                 autoFocus
+                required
               />
             </Form.Group>
             <Form.Group>
@@ -287,14 +339,17 @@ function MyWatchList() {
                 rows={3}
                 value={listDescription}
                 onChange={(e) => setListDescription(e.target.value)}
-                className="bg-secondary text-white border-secondary resize-none"
-                placeholder="Jelaskan isi list ini..."
+                className="bg-secondary text-white border-secondary"
+                placeholder="Jelaskan tentang list ini..."
+                style={{ resize: 'none' }}
               />
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer className="bg-dark border-secondary">
-          <Button variant="secondary" onClick={closeModal}>Batal</Button>
+          <Button variant="secondary" onClick={closeModal}>
+            Batal
+          </Button>
           <Button
             variant="danger"
             onClick={editingList ? updateList : createList}
@@ -307,4 +362,5 @@ function MyWatchList() {
     </div>
   );
 }
+
 export default MyWatchList;

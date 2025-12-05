@@ -16,6 +16,10 @@ function Carousels({ movies = [] }) {
     );
   }
 
+  const handleInfoClick = (movieId) => {
+    navigate(`/movie/${movieId}`);
+  };
+
   return (
     <Carousel controls={true} indicators={true} pause="hover" className="custom-carousel">
       {movies.map((movie) => (
@@ -34,8 +38,8 @@ function Carousels({ movies = [] }) {
 
           <Carousel.Caption className="h-100 d-flex">
             <Container>
-              <Row>
-                <Col lg={6}>
+              <Row className="h-100 align-items-center">
+                <Col lg={6} className="d-flex flex-column justify-content-center align-items-start h-100 text-start">
                   <p className="text-cyan text-uppercase fw-bold small tracking-wider mb-2">
                     Trending Now
                   </p>
@@ -50,7 +54,7 @@ function Carousels({ movies = [] }) {
                     <Button 
                       variant="outline-light" 
                       size="lg"
-                      onClick={() => navigate(`/movie/${movie.id}`)}
+                      onClick={() => handleInfoClick(movie.tmdb_id)}
                       className="d-flex align-items-center gap-2"
                     >
                       <Info size={20} />

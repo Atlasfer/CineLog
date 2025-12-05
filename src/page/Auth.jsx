@@ -1,20 +1,20 @@
 import { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Form, Button, Nav, Alert } from 'react-bootstrap';
+import api from '../lib/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Container, Card, Form, Button, Nav, Alert } from 'react-bootstrap';
 import './AuthStyle.css'
 
-function AuthPage() {
+function AuthPage({ setUser, setAppData }) {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const location = useLocation();
+  const from = location.state?.from || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,43 +24,45 @@ function AuthPage() {
     try {
       if (isLogin) {
         // LOGIN
-        const res = await axios.post(`${API_URL}/auth/login`, {
-          username,
-          password,
-        });
+        const res = await api.post('/auth/login', { username, password });
 
         // Simpan token dan user info
-        const { token, user } = res.data;
+        const { token, id, displayName: userName } = res.data;
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user', JSON.stringify({ id, username, displayName: userName }));
 
-        // Set default header untuk request selanjutnya
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser({ id, username, displayName: userName });
 
-        // Redirect ke home
-        navigate('/', { replace: true });
+        // Load user data
+        const [lists, quotes] = await Promise.all([
+          api.get('/lists').catch(() => ({ data: { data: [] } })),
+          api.get('/quotes').catch(() => ({ data: { data: [] } }))
+        ]);
+
+        setAppData({
+          customLists: lists.data.data || lists.data || [],
+          ratings: [],
+          quotes: quotes.data.data || quotes.data || []
+        });
+
+        navigate(from, { replace: true });
       } else {
         // REGISTER
-        const res = await axios.post(`${API_URL}/auth/register`, {
-          name,
+        await api.post('/auth/register', {
           username,
           password,
+          displayName: displayName || username
         });
 
         alert('Registrasi berhasil! Silakan login.');
         setIsLogin(true);
-        setName('');
+        setDisplayName('');
         setUsername('');
         setPassword('');
       }
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Terjadi kesalahan';
       setError(message);
-
-      // Jika register gagal karena username sudah ada, dll
-      if (err.response?.status === 400 || err.response?.status === 401) {
-        setError(err.response.data.message || 'Username atau password salah');
-      }
     } finally {
       setLoading(false);
     }
@@ -78,13 +80,9 @@ function AuthPage() {
           <h1 className="mb-2">CineLog</h1>
           <p className="text-secondary">Temukan film-film trending dan favoritmu, serta kelola watchlist film dengan mudah</p>
         </div>
-
+        
         {/* Error Alert */}
-        {error && (
-          <Alert variant="danger" className="mb-4">
-            {error}
-          </Alert>
-        )}
+        {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
         {/* Auth Card */}
         <Card className="bg-secondary bg-opacity-10 border-secondary border-opacity-50 p-4">
@@ -120,15 +118,14 @@ function AuthPage() {
               {/* Name hanya muncul saat Register */}
               {!isLogin && (
                 <Form.Group className="mb-3" controlId="formName">
-                  <Form.Label className="text-light">Nama</Form.Label>
+                  <Form.Label className="text-light">Display Name</Form.Label>
                   <Form.Control
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required={!isLogin}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
                     disabled={loading}
                     className="bg-dark text-white border-secondary"
-                    placeholder="Masukkan nama lengkap"
+                    placeholder="Masukkan display name"
                   />
                 </Form.Group>
               )}
@@ -165,11 +162,7 @@ function AuthPage() {
                 className="w-100 py-2"
                 disabled={loading}
               >
-                {loading ? (
-                  <>Loading...</>
-                ) : (
-                  <>{isLogin ? 'Masuk' : 'Daftar'}</>
-                )}
+                {loading ? 'Loading...' : (isLogin ? 'Masuk' : 'Daftar')}
               </Button>
             </Form>
           </Card.Body>
