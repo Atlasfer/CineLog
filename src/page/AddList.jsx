@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { Modal, Button, ListGroup, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../lib/api';
+import { useNavigate } from 'react-router-dom';
 
-function AddToListModal({ show, movieId, onClose, onListAdded }) {
+function AddToListModal({ show, movie, onClose, onListAdded }) {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [addingToListId, setAddingToListId] = useState(null); // untuk loading per item
+  const [addingToListId, setAddingToListId] = useState(null);
+  const navigate = useNavigate();
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-  // Fetch semua list user saat modal dibuka
   useEffect(() => {
-    fetchUserLists();
-  }, []);
+    if (show) {
+      fetchUserLists();
+    }
+  }, [show]);
 
   const fetchUserLists = async () => {
     try {
@@ -22,63 +23,82 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
       setError('');
 
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_URL}/lists`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setLists(res.data.lists || res.data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        // Token expired / not logged in
+      if (!token) {
         onClose();
-        window.location.href = '/auth';
+        navigate('/auth');
         return;
       }
-      setError('Gagal memuat daftar');
+
+      const res = await api.get('/lists');
+      const listsData = res.data.data || res.data || [];
+      setLists(listsData);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        onClose();
+        navigate('/auth');
+        return;
+      }
+      setError('Gagal memuatHContinue');
       console.error(err);
     } finally {
-      setLoading(false);
+    setLoading(false);
     }
-  };
+    };
+    const addToList = async (listId) => {
+    // Memastikan data movie valid
+    if (!movie || (!movie.id && !movie.tmdb_id)) {
+        alert('Data film tidak valid');
+        return;
+    }
+    
+    // 1. Ekstrak tmdbId
+    const tmdbId = movie.id || movie.tmdb_id; 
+    
+    // 2. Ambil tahun rilis dari 'release_date' dan konversi ke integer
+    const releaseYear = movie.release_date 
+        ? parseInt(movie.release_date.substring(0, 4)) 
+        : (movie.release_year || null);
 
-  // Tambah film ke list
-  const addToList = async (listId) => {
-    if (!movieId) return;
-
+    // 3. Siapkan payload LENGKAP
+    const payload = {
+        tmdbId: tmdbId,
+        title: movie.title || movie.name, // Gunakan movie.name jika media_type TV
+        release_year: releaseYear, 
+        poster_path: movie.poster_path,
+        media_type: movie.media_type || 'movie' // Pastikan media_type juga dikirim
+    };
+    
     setAddingToListId(listId);
+    
     try {
-      await axios.post(
-        `${API_URL}/lists/${listId}/movies`,
-        { movieId },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
+        // 4. KIRIM PAYLOAD LENGKAP
+        const res = await api.post(`/lists/${listId}/movies`, payload); // ⭐ Perubahan di sini!
 
-      // Beri feedback ke parent jika perlu (misal refresh detail page)
-      if (onListAdded) onListAdded();
-
-      // Tutup modal setelah sukses
-      onClose();
+        if (res.data.success) {
+            if (onListAdded) onListAdded();
+            alert('Film berhasil ditambahkan ke list!');
+            onClose();
+        }
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menambahkan ke list');
+        const message = err.response?.data?.message || 'Gagal menambahkan ke list';
+        alert(message);
     } finally {
-      setAddingToListId(null);
+        setAddingToListId(null);
     }
-  };
-
-  // Filter list yang belum punya film ini
-  const availableLists = movieId
-    ? lists.filter(list => !list.movieIds?.includes(movieId))
-    : lists;
-
-  return (
+};
+    // Filter list yang belum ada movie ini
+    const availableLists = lists.filter(list => {
+    if (!list.movies || !movie) return true;
+    return !list.movies.some(m => m.tmdb_id === movie.tmdb_id);
+    });
+    return (
     <Modal show={show} onHide={onClose} centered backdrop="static">
-      <Modal.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center">
-        <Modal.Title className="text-white">Add to List</Modal.Title>
-        <Button variant="link" onClick={onClose} className="text-secondary p-0">
-          <X size={24} />
-        </Button>
-      </Modal.Header>
-
+    <Modal.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center">
+    <Modal.Title className="text-white">Add to List</Modal.Title>
+    <Button variant="link" onClick={onClose} className="text-secondary p-0">
+    <X size={24} />
+    </Button>
+    </Modal.Header>
       <Modal.Body className="bg-dark text-white">
         {loading ? (
           <div className="text-center py-5">
@@ -90,46 +110,48 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
             {error}
           </Alert>
         ) : availableLists.length > 0 ? (
-          <ListGroup className="border-0" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {availableLists.map(list => (
-              <ListGroup.Item
-                key={list.id}
-                className="bg-secondary bg-opacity-10 border-secondary border-opacity-50 mb-2 rounded"
-                style={{ cursor: 'pointer' }}
-                onClick={() => addToList(list.id)}
-              >
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 className="text-white mb-1">{list.name}</h6>
-                    {list.description && (
-                      <p className="text-secondary small mb-1">{list.description}</p>
-                    )}
-                    <small className="text-muted">
-                      {list.movieIds?.length || 0} film
-                    </small>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <ListGroup className="border-0">
+              {availableLists.map(list => (
+                <ListGroup.Item
+                  key={list.id}
+                  className="bg-secondary bg-opacity-10 border-secondary border-opacity-50 mb-2 rounded"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="flex-grow-1">
+                      <h6 className="text-white mb-1">{list.name}</h6>
+                      {list.description && (
+                        <p className="text-secondary small mb-1">{list.description}</p>
+                      )}
+                      <small className="text-muted">
+                        {list.movies?.length || 0} film
+                      </small>
+                    </div>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      disabled={addingToListId === list.id}
+                      className="d-flex align-items-center gap-1"
+                      onClick={() => addToList(list.id)}
+                    >
+                      {addingToListId === list.id ? (
+                        <>
+                          <Spinner size="sm" animation="border" />
+                          <span className="ms-1">Adding...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} />
+                          <span>Add</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={addingToListId === list.id}
-                    className="d-flex align-items-center gap-1"
-                  >
-                    {addingToListId === list.id ? (
-                      <>
-                        <Spinner size="sm" animation="border" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={16} />
-                        Add
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          </div>
         ) : (
           <Alert variant="secondary" className="text-center border-secondary">
             <p className="mb-3">
@@ -142,6 +164,7 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
                 variant="danger"
                 onClick={() => {
                   onClose();
+                  navigate('/watchlist');
                 }}
               >
                 Buat List Baru
@@ -161,6 +184,7 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
             size="sm"
             onClick={() => {
               onClose();
+              navigate('/watchlist');
             }}
           >
             Buat List Pertama
@@ -168,6 +192,6 @@ function AddToListModal({ show, movieId, onClose, onListAdded }) {
         )}
       </Modal.Footer>
     </Modal>
-  );
+    );
 }
 export default AddToListModal;

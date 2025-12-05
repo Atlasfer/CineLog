@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Image } from 'react-bootstrap';
+import { Button, Image, Dropdown } from 'react-bootstrap';
 import { Home, List, Heart, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
@@ -7,73 +7,127 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import './componentStyle/NavbarStyle.css'
 
-// Anggap 'api' diimpor di App.jsx dan diteruskan
-// atau diimpor di sini (kita anggap props diperlukan untuk logout)
-// import api from '../lib/api'; 
-
-// Component ini menerima semua data dan handler yang dibutuhkan
-function NavbarComponent({ user, setUser, setAppData, handleLogout }) {
+function NavbarComponent({ user, handleLogout }) {
     const navigate = useNavigate();
+
+    // Avatar URL
+    const avatarUrl = user?.displayName || user?.username
+        ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.username)}&background=dc3545&color=fff&bold=true&size=128`
+        : null;
 
     return (
         <div>
-            <Navbar expand="lg" sticky="top" className="bg-body-tertiary py-3">
+            <Navbar expand="lg" sticky="top" className="bg-body-tertiary py-3 shadow-sm">
                 <Container>
-                    <img src='IconWhite.png'></img>
-                    <Navbar.Brand onClick={() => navigate('/')} className="NavBrand fw-bold">
-                        CineLog
-                    </Navbar.Brand>
-                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                    <Navbar.Collapse id="basic-navbar-nav">
-                      <Nav className="mx-auto">
-                          <Nav.Link onClick={() => navigate('/')} className="Linknav">
-                              Home
-                          </Nav.Link>
-                          <Nav.Link onClick={() => navigate('/watchlist')} className="Linknav">
-                              Watchlist
-                          </Nav.Link>
-                          <Nav.Link onClick={() => navigate('/favorit')} className="Linknav">
-                              Favorites
-                          </Nav.Link>
-                      </Nav>
-                    </Navbar.Collapse>
+                    {/* Logo & Brand */}
+                    <div className="d-flex align-items-center gap-2" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
+                        <img src='/IconWhite.png' alt="CineLog" style={{ width: '32px', height: '32px' }} />
+                        <Navbar.Brand className="NavBrand fw-bold mb-0">
+                            CineLog
+                        </Navbar.Brand>
+                    </div>
 
-                    {/* Right Side: Avatar or Login */}
-                    {user ? (
-                        <div className="d-flex align-items-center gap-3">
-                            <Button variant="link" className="p-0" onClick={() => navigate('/profile')}>
-                                <Image
-                                    src={user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=random`}
-                                    roundedCircle
-                                    width={42}
-                                    height={42}
-                                    className="border border-2 border-danger"
-                                />
-                            </Button>
-                            <Button variant="outline-danger" size="sm" onClick={handleLogout}>
-                                <LogOut size={18} />
-                            </Button>
+                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                    
+                    <Navbar.Collapse id="basic-navbar-nav">
+                        {/* Center Nav Links */}
+                        <Nav className="mx-auto">
+                            <Nav.Link onClick={() => navigate('/')} className="Linknav px-3">
+                                Home
+                            </Nav.Link>
+                            {user && (
+                                <>
+                                    <Nav.Link onClick={() => navigate('/watchlist')} className="Linknav px-3">
+                                        Watchlist
+                                    </Nav.Link>
+                                </>
+                            )}
+                        </Nav>
+
+                        {/* Right Side: Avatar Dropdown or Login Button */}
+                        <div className="d-none d-lg-flex align-items-center">
+                            {user ? (
+                                <Dropdown align="end">
+                                    <Dropdown.Toggle 
+                                        as="div" 
+                                        className="d-flex align-items-center gap-2"
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <span className="text-white d-none d-xl-inline">
+                                            {user.displayName || user.username}
+                                        </span>
+                                        <Image
+                                            src={avatarUrl}
+                                            roundedCircle
+                                            width={42}
+                                            height={42}
+                                            className="border border-2 border-danger"
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </Dropdown.Toggle>
+
+                                    <Dropdown.Menu className="bg-dark border-secondary">
+                                        <Dropdown.Item 
+                                            onClick={() => navigate('/profile')}
+                                            className="text-white d-flex align-items-center gap-2"
+                                        >
+                                            <User size={18} />
+                                            Profile
+                                        </Dropdown.Item>
+                                        <Dropdown.Divider className="border-secondary" />
+                                        <Dropdown.Item 
+                                            onClick={handleLogout}
+                                            className="text-danger d-flex align-items-center gap-2"
+                                        >
+                                            <LogOut size={18} />
+                                            Logout
+                                        </Dropdown.Item>
+                                    </Dropdown.Menu>
+                                </Dropdown>
+                            ) : (
+                                <Button variant="danger" onClick={() => navigate('/auth')}>
+                                    Login
+                                </Button>
+                            )}
                         </div>
-                    ) : (
-                        <Button variant="danger" onClick={() => navigate('/auth')}>
-                            Login
-                        </Button>
-                    )}
+                    </Navbar.Collapse>
                 </Container>
             </Navbar>
 
-            {/* Mobile Bottom Navigation */}
+            {/* Mobile Bottom Navigation - Hanya muncul jika user sudah login */}
             {user && (
-                <Navbar fixed="bottom" bg="dark" variant="dark" className="d-lg-none border-top border-secondary">
+                <Navbar 
+                    fixed="bottom" 
+                    className="d-lg-none border-top border-secondary shadow-lg"
+                    style={{ backgroundColor: '#1a1a1a' }}
+                >
                     <Nav className="w-100 justify-content-around py-2">
-                        <Nav.Link onClick={() => navigate('/')}><Home size={28} /></Nav.Link>
-                        <Nav.Link onClick={() => navigate('/watchlist')}><List size={28} /></Nav.Link>
-                        <Nav.Link onClick={() => navigate('/favorit')}><Heart size={28} /></Nav.Link>
-                        <Nav.Link onClick={() => navigate('/profile')}><User size={28} /></Nav.Link>
+                        <Nav.Link 
+                            onClick={() => navigate('/')}
+                            className="d-flex flex-column align-items-center text-white"
+                        >
+                            <Home size={24} />
+                            <small className="mt-1" style={{ fontSize: '0.7rem' }}>Home</small>
+                        </Nav.Link>
+                        <Nav.Link 
+                            onClick={() => navigate('/watchlist')}
+                            className="d-flex flex-column align-items-center text-white"
+                        >
+                            <List size={24} />
+                            <small className="mt-1" style={{ fontSize: '0.7rem' }}>Lists</small>
+                        </Nav.Link>
+                        <Nav.Link 
+                            onClick={() => navigate('/profile')}
+                            className="d-flex flex-column align-items-center text-white"
+                        >
+                            <User size={24} />
+                            <small className="mt-1" style={{ fontSize: '0.7rem' }}>Profile</small>
+                        </Nav.Link>
                     </Nav>
                 </Navbar>
             )}
         </div>
     );
 }
+
 export default NavbarComponent;
